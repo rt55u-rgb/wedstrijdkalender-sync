@@ -1,4 +1,4 @@
-CALENDAR_ID = "VUL_HIER_JE_GOOGLE_CALENDAR_ID_IN"
+CALENDAR_ID = "ee8d95b7971071338d93972dffca9488b6119808818bbcae513099711d34dadc@group.calendar.google.com"
 
 TIMEZONE = "Europe/Amsterdam"
 
