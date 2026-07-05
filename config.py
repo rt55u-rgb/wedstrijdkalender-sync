@@ -1,0 +1,7 @@
+CALENDAR_ID = "VUL_HIER_JE_GOOGLE_CALENDAR_ID_IN"
+
+TIMEZONE = "Europe/Amsterdam"
+
+DEFAULT_DURATION_HOURS = 3
+
+EXCEL_FILE = "data/wedstrijdkalender.xlsx"
