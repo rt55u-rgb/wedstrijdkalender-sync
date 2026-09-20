@@ -5,6 +5,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+import time
+from googleapiclient.errors import HttpError
 
 from config import CALENDAR_ID, TIMEZONE
 
@@ -74,3 +76,17 @@ class GoogleCalendar:
         ).execute()
 
         print("Toegevoegd:", match.title)
+def execute_with_retry(request, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            return request.execute()
+
+        except HttpError as e:
+            if e.resp.status in (403, 429):
+                wait = 5 * (2 ** attempt)
+                print(f"Google API rate limit. Even wachten ({wait} seconden)...")
+                time.sleep(wait)
+            else:
+                raise
+
+    raise RuntimeError("Google API blijft een rate limit geven.")
