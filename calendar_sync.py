@@ -15,14 +15,23 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 def execute_with_retry(request, max_retries=6):
-    """Voert een Google API-request uit met retry bij tijdelijke rate limits."""
+    """
+    Voert een Google API-request uit.
+
+    Bij een tijdelijke rate-limit fout (403/429)
+    wacht het programma steeds langer en probeert
+    het request opnieuw.
+    """
 
     for attempt in range(max_retries):
+
         try:
             return request.execute()
 
         except HttpError as e:
+
             if e.resp.status in (403, 429):
+
                 wait = 5 * (2 ** attempt)
 
                 print(
@@ -57,9 +66,11 @@ class GoogleCalendar:
         if not creds or not creds.valid:
 
             if creds and creds.expired and creds.refresh_token:
+
                 creds.refresh(Request())
 
             else:
+
                 flow = InstalledAppFlow.from_client_secrets_file(
                     "credentials/credentials.json",
                     SCOPES
@@ -76,6 +87,49 @@ class GoogleCalendar:
             credentials=creds
         )
 
+    def build_index(self):
+
+        events = []
+
+        page_token = None
+
+        while True:
+
+            request = self.service.events().list(
+                calendarId=CALENDAR_ID,
+                pageToken=page_token,
+                maxResults=2500,
+                singleEvents=True
+            )
+
+            result = execute_with_retry(request)
+
+            events.extend(result.get("items", []))
+
+            page_token = result.get("nextPageToken")
+
+            if not page_token:
+                break
+
+        index = {}
+
+        for event in events:
+
+            description = event.get("description", "")
+
+            uid = None
+
+            for line in description.splitlines():
+
+                if line.startswith("UID:"):
+                    uid = line.replace("UID:", "").strip()
+                    break
+
+            if uid:
+                index[uid] = event
+
+        return index
+
     def add_match(self, match):
 
         start = datetime.combine(
@@ -88,14 +142,23 @@ class GoogleCalendar:
 
         end = start + timedelta(hours=3)
 
+        description = (
+            f"{match.description}\n\n"
+            f"UID:{match.uid}"
+        )
+
         event = {
             "summary": match.title,
+
             "location": match.location,
-            "description": match.description,
+
+            "description": description,
+
             "start": {
                 "dateTime": start.isoformat(),
                 "timeZone": TIMEZONE,
             },
+
             "end": {
                 "dateTime": end.isoformat(),
                 "timeZone": TIMEZONE,
@@ -109,7 +172,62 @@ class GoogleCalendar:
 
         execute_with_retry(request)
 
-        print("Toegevoegd:", match.title)
+        print("➕", match.title)
 
-        # Kleine pauze tussen succesvolle API-calls
+        time.sleep(1)
+
+    def update_match(self, event, match):
+
+        start = datetime.combine(
+            match.date.date(),
+            datetime.strptime(
+                match.start_time,
+                "%H:%M"
+            ).time()
+        )
+
+        end = start + timedelta(hours=3)
+
+        description = (
+            f"{match.description}\n\n"
+            f"UID:{match.uid}"
+        )
+
+        event["summary"] = match.title
+        event["location"] = match.location
+        event["description"] = description
+
+        event["start"] = {
+            "dateTime": start.isoformat(),
+            "timeZone": TIMEZONE,
+        }
+
+        event["end"] = {
+            "dateTime": end.isoformat(),
+            "timeZone": TIMEZONE,
+        }
+
+        request = self.service.events().update(
+            calendarId=CALENDAR_ID,
+            eventId=event["id"],
+            body=event
+        )
+
+        execute_with_retry(request)
+
+        print("🔄", match.title)
+
+        time.sleep(1)
+
+    def delete_event(self, event):
+
+        request = self.service.events().delete(
+            calendarId=CALENDAR_ID,
+            eventId=event["id"]
+        )
+
+        execute_with_retry(request)
+
+        print("🗑️", event.get("summary", "Onbekende wedstrijd"))
+
         time.sleep(1)
