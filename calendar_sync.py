@@ -1,4 +1,4 @@
-```python
+
 from datetime import datetime, timedelta
 import os.path
 import time
@@ -129,4 +129,4 @@ class GoogleCalendar:
         execute_with_retry(request)
 
         print("Toegevoegd:", match.title)
-```
+
