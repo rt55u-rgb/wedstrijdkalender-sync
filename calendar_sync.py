@@ -1,4 +1,3 @@
-
 from datetime import datetime, timedelta
 import os.path
 import time
@@ -16,23 +15,14 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 def execute_with_retry(request, max_retries=6):
-    """
-    Voert een Google API-request uit.
-
-    Bij een tijdelijke rate-limit fout (403/429)
-    wacht het programma steeds wat langer en probeert
-    het request opnieuw.
-    """
+    """Voert een Google API-request uit met retry bij tijdelijke rate limits."""
 
     for attempt in range(max_retries):
-
         try:
             return request.execute()
 
         except HttpError as e:
-
             if e.resp.status in (403, 429):
-
                 wait = 5 * (2 ** attempt)
 
                 print(
@@ -56,7 +46,6 @@ class GoogleCalendar:
     def __init__(self):
 
         creds = None
-
         token = "credentials/token.json"
 
         if os.path.exists(token):
@@ -68,11 +57,9 @@ class GoogleCalendar:
         if not creds or not creds.valid:
 
             if creds and creds.expired and creds.refresh_token:
-
                 creds.refresh(Request())
 
             else:
-
                 flow = InstalledAppFlow.from_client_secrets_file(
                     "credentials/credentials.json",
                     SCOPES
@@ -102,23 +89,17 @@ class GoogleCalendar:
         end = start + timedelta(hours=3)
 
         event = {
-
             "summary": match.title,
-
             "location": match.location,
-
             "description": match.description,
-
             "start": {
                 "dateTime": start.isoformat(),
                 "timeZone": TIMEZONE,
             },
-
             "end": {
                 "dateTime": end.isoformat(),
                 "timeZone": TIMEZONE,
             }
-
         }
 
         request = self.service.events().insert(
@@ -130,3 +111,5 @@ class GoogleCalendar:
 
         print("Toegevoegd:", match.title)
 
+        # Kleine pauze tussen succesvolle API-calls
+        time.sleep(1)
